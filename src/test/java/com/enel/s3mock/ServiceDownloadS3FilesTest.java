@@ -36,8 +36,11 @@ public class ServiceDownloadS3FilesTest {
     @InjectMocks
     private ServiceDownloadS3FilesImpl serviceDownloadS3Files;
 
+
     @BeforeEach
     public void setUp() {
+
+        System.setProperty("java.awt.headless", "false");
 
         JTextField accessKeyID = new JTextField();
         accessKeyID.setSize(new Dimension(300, 16));
@@ -80,7 +83,7 @@ public class ServiceDownloadS3FilesTest {
 
             bucketName = bucketNameField.getText();
             prefix = prefixField.getText();
-            path = Paths.get("src","test","resources" , prefixField.getText());
+            path = Paths.get("src", "test", "resources", prefixField.getText());
         }
 
     }
@@ -89,9 +92,13 @@ public class ServiceDownloadS3FilesTest {
     @DisplayName("Given service S3, when secret access are provided, then return file parquet")
     public void downloadFile() throws IOException {
 
-        Path downloadS3Files = serviceDownloadS3Files.downloadS3Files(sessionCredentials, this.path, prefix, bucketName);
+        if (!GraphicsEnvironment.isHeadless()) {
 
-        Assertions.assertNotEquals(Objects.requireNonNull(downloadS3Files.toFile().listFiles()).length, 0);
+            Path downloadS3Files = serviceDownloadS3Files.downloadS3Files(sessionCredentials, this.path, prefix, bucketName);
+
+            Assertions.assertNotEquals(Objects.requireNonNull(downloadS3Files.toFile().listFiles()).length, 0);
+
+        }
 
     }
 
