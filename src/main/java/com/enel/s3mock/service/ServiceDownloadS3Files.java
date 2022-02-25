@@ -2,6 +2,8 @@ package com.enel.s3mock.service;
 
 import com.amazonaws.auth.BasicSessionCredentials;
 import com.amazonaws.regions.Regions;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.ListObjectsV2Result;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -11,5 +13,5 @@ public interface ServiceDownloadS3Files {
 
     Regions clientRegion = Regions.EU_CENTRAL_1;
 
-    Path downloadS3Files(BasicSessionCredentials sessionCredentials, Path savePath, String prefixField, String bucketName) throws IOException;
+    Path downloadS3Files(AmazonS3 s3Client, ListObjectsV2Result result, Path savePath, String filename, int rows) throws IOException;
 }

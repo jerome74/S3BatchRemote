@@ -1,14 +1,10 @@
-package com.enel.s3mock.service;
+package com.enel.s3mock.util;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.ListObjectsV2Result;
 import com.amazonaws.services.s3.model.S3Object;
-import com.enel.s3mock.util.ParquetUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,17 +13,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Optional;
+import java.util.UUID;
 
-
-@Service
 @Slf4j
-public class ServiceDownloadS3FilesImpl  implements ServiceDownloadS3Files{
+public class FileUtil {
 
-    private static final Logger log = LoggerFactory.getLogger(ServiceDownloadS3FilesImpl.class);
+    public static void saveParquetAndPrintFile(AmazonS3 s3Client, ListObjectsV2Result result, Path savePath, String filename, int rows) throws IOException {
 
-    public  Path downloadS3Files(AmazonS3 s3Client, ListObjectsV2Result result, Path savePath, String filename, int rows) throws IOException {
-
-       return  Optional.of(Files.createDirectories(savePath)).map(path -> {
+        Optional.of(Files.createDirectories(savePath)).map(path -> {
 
             log.info("path => {}", path.toString());
 
@@ -60,7 +53,7 @@ public class ServiceDownloadS3FilesImpl  implements ServiceDownloadS3Files{
 
 
             });
-            return path;
-        }).orElse(Path.of(""));
+            return null;
+        });
     }
 }
