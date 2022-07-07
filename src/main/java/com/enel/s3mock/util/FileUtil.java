@@ -18,14 +18,18 @@ import java.util.UUID;
 @Slf4j
 public class FileUtil {
 
-    public static void saveParquetAndPrintFile(AmazonS3 s3Client, ListObjectsV2Result result, Path savePath, String filename, int rows) throws IOException {
+    public static void saveParquetAndPrintFile(AmazonS3 s3Client, ListObjectsV2Result result, Path savePath, String filename, int rows, StringBuffer buffer) throws IOException {
 
         Optional.of(Files.createDirectories(savePath)).map(path -> {
 
             log.info("path => {}", path.toString());
+            buffer.append("path => ").append(path.toString()).append(System.getProperty("line.separator"));
 
             result.getObjectSummaries().forEach(objectSummary -> {
                 log.info("[ S3 ] - {} (size: {}) (last modified: {})\n", objectSummary.getKey(), objectSummary.getSize(), objectSummary.getLastModified());
+                buffer.append("[ S3 ] - ").append(objectSummary.getKey())
+                        .append(", size: ").append(objectSummary.getSize())
+                        .append(", last modified: ").append(objectSummary.getLastModified()).append(System.getProperty("line.separator"));
 
                 Path file = null;
 
@@ -40,16 +44,19 @@ public class FileUtil {
                     // Process the objectData stream.
                     objectData.close();
 
-                    log.info("[ S3 ] - copy file: {})\n", path);
+                   /* log.info("[ S3 ] - copy file: {})\n", path);
+                    buffer.append("[ S3 ] - copy file: ").append(path).append(System.getProperty("line.separator"));*/
+
                 } catch (Exception ex) {
                     log.info("[ S3 ] - error to copy file : {})\n", ex.getMessage());
+                    buffer.append("[ S3 ] - error to copy file : ").append(ex.getMessage()).append(System.getProperty("line.separator"));
                 }
 
                  /*
                     call ParquetUtil to print file
                      */
                 assert file != null;
-                ParquetUtil.printParquestFile(new org.apache.hadoop.fs.Path(file.toUri()),rows);
+                ParquetUtil.printParquestFile(new org.apache.hadoop.fs.Path(file.toUri()),rows, buffer);
 
 
             });

@@ -14,7 +14,9 @@ import com.enel.s3mock.model.ResponseWriteExecutionPlan;
 import com.enel.s3mock.service.ServiceDownloadS3FilesImpl;
 import com.enel.s3mock.util.PropertyParser;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.springframework.http.HttpHeaders;
@@ -29,22 +31,16 @@ import reactor.test.StepVerifier;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Paths;
+import java.util.Arrays;
 
 @Slf4j
 public class S3ListingObjectsTest {
 
+    PropertyParser prop = null;
 
-
-    @InjectMocks
-    private ServiceDownloadS3FilesImpl serviceDownloadS3Files = new ServiceDownloadS3FilesImpl();
-
-    private static final Regions clientRegion = Regions.EU_CENTRAL_1;
-    private static final String PROPERTIES_FILE = "credentials.properties";
-
-    @Test
-    public void listingObjectsTest() {
-
-        var prop = new PropertyParser();
+    @BeforeEach
+    public void setUp() {
+        prop = new PropertyParser();
 
         try {
             prop.load(S3ListingObjectsTest.class
@@ -53,6 +49,46 @@ public class S3ListingObjectsTest {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    @InjectMocks
+    private ServiceDownloadS3FilesImpl serviceDownloadS3Files = new ServiceDownloadS3FilesImpl();
+
+    private static final Regions clientRegion = Regions.EU_CENTRAL_1;
+    private static final String PROPERTIES_FILE = "credentials.properties";
+    
+
+
+    public void listExtractionParquet(AmazonS3 s3Client) {
+
+        var bucketName = prop.getProperty("s3.bucketName.prefix").concat(prop.getProperty("s3.bucketName.suffix"));
+
+        var countries = prop.getProperty("countries");
+        var entity = prop.getProperty("s3.ms.entity.name");
+
+        Arrays.stream(countries.split(",")).forEach(country -> {
+
+            // ListObjectsV2Request objectsV2Request = (new ListObjectsV2Request()).withPrefix("compensatoritalym/v1/").withDelimiter("/").withBucketName("enel-dev-glin-ap31312mp01163-mecompensnetwbtch-cold-area");
+
+            ListObjectsV2Request objectsV2Request = (new ListObjectsV2Request()).withPrefix(entity.concat(country) + "/v1/").withDelimiter("/").withBucketName(bucketName);
+
+            ListObjectsV2Result result = s3Client.listObjectsV2(objectsV2Request);
+
+            log.info("-----------------------------------------------------------------------------------------------------------------------------------------");
+            log.info("{} is Empty => {} \n", entity.concat(country), String.valueOf(result.getObjectSummaries().isEmpty()));
+            log.info("{} size => {} \n", entity.concat(country), String.valueOf(result.getObjectSummaries().size()));
+
+            result.getObjectSummaries().forEach(s3ObjectSummary -> {
+                log.info("Parquet :: {} , size :: {} \n", s3ObjectSummary.getKey(),FileUtils.byteCountToDisplaySize(s3ObjectSummary.getSize()));
+            });
+
+        });
+
+    }
+
+    @Test
+    public void listingObjectsTest() {
+
 
         WebClient webClient = WebClient.create().mutate().build();
 
@@ -110,6 +146,10 @@ public class S3ListingObjectsTest {
                     .withRegion(clientRegion)
                     .build();
 
+        /**
+         *  list of Parquest File
+         */
+            listExtractionParquet(s3Client);
 
             log.info("Listing objects");
 
@@ -124,6 +164,7 @@ public class S3ListingObjectsTest {
             log.info("Result with Common Prefixes  is Empty => {} \n", String.valueOf(result.getCommonPrefixes().isEmpty()));
             log.info("Result with Common Prefixes  size => {} \n", String.valueOf(result.getCommonPrefixes().size()));
 
+
             var limit = Integer.parseInt(prop.getProperty("limit.file"));
 
             result.getCommonPrefixes().forEach(prefix -> log.info("[ MS ] prefix - {} \n", prefix));
@@ -134,16 +175,21 @@ public class S3ListingObjectsTest {
                 InputStream objectData = object.getObjectContent();
                 var filename = objectSummary.getKey().substring(objectSummary.getKey().lastIndexOf("/") + 1);
 
-                try {
-                    serviceDownloadS3Files.downloadS3Files(s3Client
-                            , result
-                            , Paths.get("src", "test", "resources", prop.getProperty("s3.prefixField"))
-                            , filename
-                            ,Integer.parseInt(prop.getProperty("limit.row")));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                if (!filename.equals("_SUCCESS")) {
 
+                    log.info("Elaborating.... => {}, size {} \n", objectSummary.getKey(), FileUtils.byteCountToDisplaySize(objectSummary.getSize()));
+
+                    try {
+                        serviceDownloadS3Files.downloadS3Files(s3Client
+                                , objectSummary
+                                , Paths.get("src", "test", "resources", prop.getProperty("s3.prefixField"))
+                                , filename
+                                , Integer.parseInt(prop.getProperty("limit.row"))
+                                , new StringBuffer());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
 
             });
 

@@ -4,6 +4,7 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.ListObjectsV2Result;
 import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.enel.s3mock.util.ParquetUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
@@ -23,15 +24,12 @@ import java.util.Optional;
 @Slf4j
 public class ServiceDownloadS3FilesImpl  implements ServiceDownloadS3Files{
 
-    private static final Logger log = LoggerFactory.getLogger(ServiceDownloadS3FilesImpl.class);
-
-    public  Path downloadS3Files(AmazonS3 s3Client, ListObjectsV2Result result, Path savePath, String filename, int rows) throws IOException {
+    public  Path downloadS3Files(AmazonS3 s3Client, S3ObjectSummary objectSummary, Path savePath, String filename, int rows, StringBuffer buffer) throws IOException {
 
        return  Optional.of(Files.createDirectories(savePath)).map(path -> {
 
             log.info("path => {}", path.toString());
 
-            result.getObjectSummaries().forEach(objectSummary -> {
                 log.info("[ S3 ] - {} (size: {}) (last modified: {})\n", objectSummary.getKey(), objectSummary.getSize(), objectSummary.getLastModified());
 
                 Path file = null;
@@ -47,19 +45,20 @@ public class ServiceDownloadS3FilesImpl  implements ServiceDownloadS3Files{
                     // Process the objectData stream.
                     objectData.close();
 
-                    log.info("[ S3 ] - copy file: {})\n", path);
+                   /* log.info("[ S3 ] - copy file: {})\n", path);
+                    buffer.append("[ S3 ] - copy file: ").append(path).append(System.getProperty("line.separator"));*/
                 } catch (Exception ex) {
                     log.info("[ S3 ] - error to copy file : {})\n", ex.getMessage());
+                    buffer.append("[ S3 ] - error to copy file : ").append(ex.getMessage()).append(System.getProperty("line.separator"));
                 }
 
                  /*
                     call ParquetUtil to print file
                      */
                 assert file != null;
-                ParquetUtil.printParquestFile(new org.apache.hadoop.fs.Path(file.toUri()),rows);
+                ParquetUtil.printParquestFile(new org.apache.hadoop.fs.Path(file.toUri()),rows, buffer);
 
 
-            });
             return path;
         }).orElse(Path.of(""));
     }

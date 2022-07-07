@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Slf4j
 public class ParquetUtil {
 
-    public static void printParquestFile(Path path, int rowToRead) throws IllegalArgumentException {
+    public static void printParquestFile(Path path, int rowToRead, StringBuffer buffer) throws IllegalArgumentException {
 
         Configuration conf = new Configuration();
 
@@ -39,17 +39,22 @@ public class ParquetUtil {
             try {
                 while (null != (pages = r.readNextRowGroup())) {
                     final long rows = pages.getRowCount();
-                   log.info("#########################");
+                   log.info("#################");
                    log.info("Number of rows: " + rows);
-                   log.info("#########################");
+                   log.info("#################");
                    log.info("Read N. " + rowToRead);
                    log.info("_________________________");
 
+                    buffer.append("#################").append(System.getProperty("line.separator"));
+                    buffer.append(rowToRead).append(" first rows of ").append(rows).append(System.getProperty("line.separator"));
+                    buffer.append("#################").append(System.getProperty("line.separator"));
+                    buffer.append(System.getProperty("line.separator"));
                     final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
                     final RecordReader recordReader = columnIO.getRecordReader(pages, new GroupRecordConverter(schema));
                     for (int i = 0; i < rows; i++) {
                         final Group g = (Group) recordReader.read();
-                        printGroup(g);
+                        buffer.append("----------------------------------------").append(System.getProperty("line.separator"));
+                        printGroup(g, buffer);
 
                         if (rowRed.incrementAndGet() == rowToRead)
                             break;
@@ -57,8 +62,7 @@ public class ParquetUtil {
                 }
             } finally {
                 r.close();
-            }
-        } catch (IOException e) {
+            }        } catch (IOException e) {
            log.info("Error reading parquet file.");
             e.printStackTrace();
         }
@@ -68,7 +72,7 @@ public class ParquetUtil {
     public static final long NANOS_PER_MILLISECOND = 1000000;
     public static final SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'mm:ss");
 
-    public static void printGroup(Group g) {
+    public static void printGroup(Group g , StringBuffer buffer ) {
         int fieldCount = g.getType().getFieldCount();
         for (int field = 0; field < fieldCount; field++) {
             int valueCount = g.getFieldRepetitionCount(field);
@@ -77,7 +81,7 @@ public class ParquetUtil {
             String fieldName = fieldType.getName();
 
             for (int index = 0; index < valueCount; index++) {
-                if (fieldName.equals("begindatetime") || fieldName.equals("enddatetime")) {
+                if (fieldName.equals("begindatetime") || fieldName.equals("enddatetime") ||  fieldName.equals("extractiondate")) {
                     if (fieldType.isPrimitive()) {
                         var strInt96Value = g.getValueToString(field, index);
                         var byteArray = to_byte(strInt96Value.substring(strInt96Value.indexOf("[") + 1, strInt96Value.indexOf("]")).replace(" ", "").split(","));
@@ -87,9 +91,13 @@ public class ParquetUtil {
                         long dateTime = (julianDay - JULIAN_DAY_NUMBER_FOR_UNIX_EPOCH) * DateTimeConstants.MILLIS_PER_DAY
                                 + nanosOfDay / NANOS_PER_MILLISECOND;
                        log.info(fieldName + " " + formatter.format(new Date(dateTime)));
+                       buffer.append(fieldName).append(" : ").append(formatter.format(new Date(dateTime))).append(System.getProperty("line.separator"));
                     }
                 } else if (fieldType.isPrimitive()) {
                    log.info(fieldName + " " + g.getValueToString(field, index));
+                   buffer.append(fieldName).append(" : ").append(g.getValueToString(field, index)).append(System.getProperty("line.separator"));
+                    if(fieldName.equals("id"))
+                        buffer.append("----------------------------------------").append(System.getProperty("line.separator"));
                 }
             }
         }

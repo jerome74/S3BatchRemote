@@ -1,0 +1,278 @@
+/**
+     *
+     * @param appFilter
+     * @param env
+     * @param area
+     * @param entity
+     * @param jTextPane
+     */
+
+    /*private void excuteExtraction(String appFilter, String env, String area, String entity, JTextPane jTextPane) {
+
+        var prop = new PropertyParser();
+        var response = new StringBuffer();
+        AtomicBoolean isFinished = new AtomicBoolean(false);
+
+        try {
+            prop.load(ParquetsDialog.class.getClassLoader().getResourceAsStream(PROPERTIES_FILE));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
+        WebClient webClient = WebClient.create().mutate().build();
+
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("grant_type", "password");
+        formData.add("username", "RAP350891002");
+        formData.add("password", "Dd3VTAM?z#tbvcpf");
+
+        var path = prop.getProperty("ms.path.token.".concat(env));
+        var basicAuth = prop.getProperty("basicauth.".concat(env));
+
+
+        var responseBsTrigger = webClient.post()
+                .uri(path)
+                .header("Authorization", "Basic ".concat(basicAuth))
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+                .body(BodyInserters.fromFormData(formData)).retrieve()
+                .bodyToMono(ResponseToken.class)
+                .switchIfEmpty(Mono.error(() -> new Exception("Empty Body to retreive token")))
+                .flatMap(respToken -> {
+
+
+
+                  *//* var msEndpoint = ENTITIES.stream().filter(entity1 -> entity1.getName().equals(entity)).map(Entity::getEndpoint);
+                    ENTITY.forEach(entita -> {
+                        COUNTRY.forEach(country -> {
+                            LEVEL.forEach(level -> {
+                                var entityName = entita.concat(country).concat(level);*//*
+
+                    var entityName = "conpensatoritalym";
+                    var msEndpoint = "mecompensnetwbtch.glin-ap31312mp01163-dev-platform-namespace";
+                    var sparkEntity = area + "Extract" + Character.toUpperCase(entity.charAt(0)) + entity.substring(1);
+
+                 *//* return webClient
+                          .post()
+                          .uri(prop.getProperty("bs.trigger.".concat(env)))
+                          .header("Authorization", "Bearer ".concat(respToken.getAccessToken()))
+                          .contentType(MediaType.APPLICATION_JSON)
+                            .bodyValue("{\n" + "    \"entity\": \"" + entityName + "\",\n"
+                                    + "    \"version\": \"v1\",\n"
+                                    + "    \"endpoint\": \"" + msEndpoint + "\",\n"
+                                    + "    \"source\": \"Self\",\n"
+                                    + "    \"applicationFilter\": \"" + appFilter + "\",\n"
+                                    + "    \"sparkEntity\": \"" + sparkEntity + "\",\n"
+                                    + "    \"extractionMode\": \"Frozen\"\n"
+                                    + "}")
+                          .retrieve()
+                          .bodyToMono(ResponseBsTrigger.class)
+                          .switchIfEmpty(Mono.error(() -> new Exception("Empty Body to retreive bs trigger")));*//*
+
+                    return  Mono.just(ResponseBsTrigger.builder().output(OutputReponse.builder().jobId("11883").build()).build());
+
+
+                }).flatMap(responseBsTrigger1 -> {
+
+                    return webClient.get().uri(prop.getProperty("livy.path.".concat(env)))
+                            .retrieve()
+                            .bodyToMono(DataBuffer.class)
+                            .map(buffer -> {
+                                String jsonString = buffer.toString(StandardCharsets.UTF_8);
+                                DataBufferUtils.release(buffer);
+                                try {
+                                    return objectMapper.readValue(jsonString, LivyJsonResponse.class);
+                                } catch (JsonProcessingException e) {
+                                    e.printStackTrace();
+                                }
+                            }).expand(livyJsonResponse -> {
+
+
+                                var sessionLivyState = livyJsonResponse.sessions.stream()
+                                        .filter(sessionLivy -> sessionLivy.id == Integer.parseInt(responseBsTrigger1.getOutput().getJobId()))
+                                        .peek(sessionLivy -> isFinished.set(true)).findFirst()
+                                        .orElse(SessionLivy.builder().id(Integer.parseInt(responseBsTrigger1.getOutput().getJobId())).state("no state").build());
+
+
+                                switch (sessionLivyState.state){
+                                    case "success" :
+                                        isFinished.set(Boolean.TRUE);
+                                    case "dead" :
+                                        isFinished.set(Boolean.TRUE);
+                                    default:
+                                        webClient.get().uri(prop.getProperty("livy.path.".concat(env)))
+                                                .retrieve()
+                                                .bodyToMono(DataBuffer.class)
+                                                .map(buffer -> {
+                                                    String jsonString = buffer.toString(StandardCharsets.UTF_8);
+                                                    DataBufferUtils.release(buffer);
+
+                                });
+
+
+    });
+
+
+        var livyJsonResponse = webClient.get().uri(prop.getProperty("livy.path.".concat(env)))
+                .retrieve()
+                .bodyToMono(DataBuffer.class)
+                .map(buffer -> {
+                            String jsonString = buffer.toString(StandardCharsets.UTF_8);
+                            DataBufferUtils.release(buffer);
+                    try {
+                        return objectMapper.readValue(jsonString, LivyJsonResponse.class);
+                    } catch (JsonProcessingException e) {
+                        e.printStackTrace();
+                    }
+                });
+
+
+        Mono.zip(responseBsTrigger,livyJsonResponse).expand(objects -> {
+
+            response.append("---------------------------------------------").append(System.getProperty("line.separator"));
+            System.out.println(response.toString());
+            jTextPane.setText(response.toString());
+
+            AtomicBoolean isFinished = new AtomicBoolean(false);
+            var linyPath = prop.getProperty("livy.path.".concat(env));
+            var job_id = Integer.parseInt(objects.getT1().getOutput().getJobId());
+
+            var sessionLivyState = objects.getT2().sessions.stream()
+                    .filter(sessionLivy -> sessionLivy.id == job_id)
+                    .peek(sessionLivy -> isFinished.set(true)).findFirst()
+                    .orElse(SessionLivy.builder().id(job_id).state("no state").build());
+
+
+            do {
+
+                response.append("state = ").append(sessionLivyState.state).append(System.getProperty("line.separator"));
+                System.out.println(response.toString());
+                jTextPane.setText(response.toString());
+
+
+                switch (sessionLivyState.state){
+                    case "success" :
+                        isFinished.set(Boolean.TRUE);
+                    case "dead" :
+                        isFinished.set(Boolean.TRUE);
+                    default:
+
+                        webClient.get().uri(linyPath)
+                                .retrieve()
+                                .bodyToMono(DataBuffer.class)
+                                .map(buffer -> {
+                                    String jsonString = buffer.toString(StandardCharsets.UTF_8);
+                                    DataBufferUtils.release(buffer);
+                }
+
+
+
+                webClient.get().uri(linyPath)
+                        .retrieve()
+                        .bodyToMono(DataBuffer.class)
+                        .map(buffer -> {
+                            String jsonString = buffer.toString(StandardCharsets.UTF_8);
+                            DataBufferUtils.release(buffer);
+
+                            try {
+                                var jivyJsonResponse = objectMapper.readValue(jsonString, LivyJsonResponse.class);
+
+                                var sessionLivyState = jivyJsonResponse.sessions.stream()
+                                        .filter(sessionLivy -> sessionLivy.id == job_id)
+                                        .peek(sessionLivy -> isFinished.set(true)).findFirst()
+                                        .orElse(SessionLivy.builder().id(job_id).state("no state").build());
+
+
+                                response.append("state = ").append(sessionLivyState.state).append(System.getProperty("line.separator"));
+                                System.out.println(response.toString());
+                                jTextPane.setText(response.toString());
+
+
+                            } catch (JsonProcessingException e) {
+                                e.printStackTrace();
+                            }
+
+                            return responseBsTrigger;
+                        });
+            } while (!isFinished.get());
+
+        });
+
+
+
+
+
+        flatMap(responseBsTrigger -> {
+
+                    AtomicBoolean isFinished = new AtomicBoolean(false);
+
+                    var linyPath = prop.getProperty("livy.path.".concat(env));
+                    var job_id = Integer.parseInt(responseBsTrigger.getOutput().getJobId());
+
+                    response.append("---------------------------------------------").append(System.getProperty("line.separator"));
+                    System.out.println(response.toString());
+                    jTextPane.setText(response.toString());
+
+                    do {
+                        webClient.get().uri(linyPath)
+                                .retrieve()
+                                .bodyToMono(DataBuffer.class)
+                                .map(buffer -> {
+                            String jsonString = buffer.toString(StandardCharsets.UTF_8);
+                            DataBufferUtils.release(buffer);
+
+                            try {
+                                var jivyJsonResponse = objectMapper.readValue(jsonString, LivyJsonResponse.class);
+
+                                var sessionLivyState = jivyJsonResponse.sessions.stream()
+                                        .filter(sessionLivy -> sessionLivy.id == job_id)
+                                        .peek(sessionLivy -> isFinished.set(true)).findFirst()
+                                        .orElse(SessionLivy.builder().id(job_id).state("no state").build());
+
+
+                                response.append("state = ").append(sessionLivyState.state).append(System.getProperty("line.separator"));
+                                System.out.println(response.toString());
+                                jTextPane.setText(response.toString());
+
+
+                            } catch (JsonProcessingException e) {
+                                e.printStackTrace();
+                            }
+
+                            return responseBsTrigger;
+                        });
+                    } while (!isFinished.get());
+
+                    response.append("---------------------------------------------").append(System.getProperty("line.separator"));
+                    System.out.println(response.toString());
+                    jTextPane.setText(response.toString());
+
+                    return Mono.just(responseBsTrigger);
+                }).subscribe(responseBsTrigger -> System.out.println(responseBsTrigger.getOutput().getJobId()));
+*//*                        });
+                        });
+                });*//*
+    }*/
+
+
+
+
+
+
+
+     /* if(!Objects.isNull(snapshot)){
+
+                                var bucketToDelete = bucketName
+                                        .concat( "/")
+                                        .concat(entity)
+                                        .concat("/v1/snapshot=")
+                                        .concat(snapshot);
+
+                                response.append("-----------------------------------------------------------------------------------------------------------------------------------------").append(System.getProperty("line.separator"));
+                                response.append("bucket deleting :: ").append(bucketToDelete).append(System.getProperty("line.separator"));
+
+                                s3Client.deleteBucket(new DeleteBucketRequest(bucketToDelete));
+
+                                response.append("bucket deleted").append(System.getProperty("line.separator"));
+                                response.append("-----------------------------------------------------------------------------------------------------------------------------------------").append(System.getProperty("line.separator"));
+                            }*/
