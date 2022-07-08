@@ -156,23 +156,11 @@ public class ParquetsDialog extends JDialog {
                 checkDelete.set(((JCheckBox) component).isSelected());
         });
 
-        Arrays.stream(entity.getComponents()).forEach(component -> {
-            if (component.getClass().equals(JTextField.class) && ((JTextField) component).getName().equals("textFieldSnapshot"))
-                snapshotString.set(Objects.requireNonNull(((JTextField) component).getText()).toString());
-        });
-
-        String snapshot = null;
-
-        if (checkDelete.get())
-            snapshot = snapshotString.get();
 
         var eleEntity = ENTITIES.stream().filter(entity1 -> entity1.getName().equals(entitySelectString.get())).collect(Collectors.toList()).stream().findFirst().get();
 
-
         listingObjectsTest(entitySelectString.get().concat(countrySelectString.get()).concat(levelSelectString.get())
-                , eleEntity.getMsName(), eleEntity.getMsNumber(), arJTextPane.get(), Integer.parseInt(limitSelectString.get()), Integer.parseInt(rowSelectString.get()), logInfo, envSelectString.get(), snapshot);
-
-
+                , eleEntity.getMsName(), eleEntity.getMsNumber(), arJTextPane.get(), Integer.parseInt(limitSelectString.get()), Integer.parseInt(rowSelectString.get()), logInfo, envSelectString.get(), checkDelete.get());
     }
 
 
@@ -212,7 +200,7 @@ public class ParquetsDialog extends JDialog {
      * @param enviroment
      */
 
-    public void listingObjectsTest(String entityName, String mName, String msNumber, JTextPane jTextPane, int limit, int row, String info, String enviroment, String snapshot) {
+    public void listingObjectsTest(String entityName, String mName, String msNumber, JTextPane jTextPane, int limit, int row, String info, String enviroment, boolean delete) {
 
 
         var prop = new PropertyParser();
@@ -253,9 +241,9 @@ public class ParquetsDialog extends JDialog {
                     try {
 
 
-                        var accessKeyID = writeExecutionPlan.getTemporaryCredentials().getRead().getAccessKeyID();
-                        var secretKey = writeExecutionPlan.getTemporaryCredentials().getRead().getSecretKey();
-                        var sessionToken = writeExecutionPlan.getTemporaryCredentials().getRead().getSessionToken();
+                        var accessKeyID = writeExecutionPlan.getTemporaryCredentials().getWrite().getAccessKeyID();
+                        var secretKey = writeExecutionPlan.getTemporaryCredentials().getWrite().getSecretKey();
+                        var sessionToken = writeExecutionPlan.getTemporaryCredentials().getWrite().getSessionToken();
 
                         var bucketName = bucketNamePref.concat(prop.getProperty("s3.bucketName.suffix"));
                         var prefixField = prop.getProperty("s3.prefixField");
@@ -285,31 +273,39 @@ public class ParquetsDialog extends JDialog {
                                 response.append("-----------------------------------------------------------------------------------------------------------------------------------------").append(System.getProperty("line.separator"));
                                 response.append("Prefix :: ").append(s3ObjectPrefix).append(System.getProperty("line.separator"));
                                 response.append(System.getProperty("line.separator"));
-                                s3Client.listObjectsV2((new ListObjectsV2Request()).withPrefix(s3ObjectPrefix).withDelimiter("/").withBucketName(bucketName)).getObjectSummaries().subList(0, limit).forEach(s3ObjectSummary -> {
-                                    response.append("Parquet [ ").append(new SimpleDateFormat("dd-MM-yyy HH:mm:ss").format(s3ObjectSummary.getLastModified())).append(" ] :: ")
+                                var listSum = s3Client.listObjectsV2((new ListObjectsV2Request()).withPrefix(s3ObjectPrefix).withDelimiter("/").withBucketName(bucketName)).getObjectSummaries();
+                                response.append("number of files parquet => ").append(String.valueOf(listSum.size())).append(System.getProperty("line.separator"));
+                                    listSum.subList(0, !delete ? limit :  listSum.size()).forEach(s3ObjectSummary -> {
+                                    if (delete) {
+                                            s3Client.deleteObject(new DeleteObjectRequest(s3ObjectSummary.getBucketName(), s3ObjectSummary.getKey()));
+                                            response.append("Parquet delete [ ").append(new SimpleDateFormat("dd-MM-yyy HH:mm:ss").format(s3ObjectSummary.getLastModified())).append(" ] :: ").append(s3ObjectSummary.getKey()).append(" , size :: ")
+                                                    .append(FileUtils.byteCountToDisplaySize(s3ObjectSummary.getSize())).append(System.getProperty("line.separator"));
+                                    }
+                                    else {
+                                            response.append("Parquet [ ").append(new SimpleDateFormat("dd-MM-yyy HH:mm:ss").format(s3ObjectSummary.getLastModified())).append(" ] :: ")
                                             .append(s3ObjectSummary.getKey()).append(" , size :: ").append(FileUtils.byteCountToDisplaySize(s3ObjectSummary.getSize())).append(System.getProperty("line.separator"));
 
+                                            S3Object object = s3Client.getObject(new GetObjectRequest(s3ObjectSummary.getBucketName(), s3ObjectSummary.getKey()));
+                                            InputStream objectData = object.getObjectContent();
+                                            var filename = s3ObjectSummary.getKey().substring(s3ObjectSummary.getKey().lastIndexOf("/") + 1);
 
-                                    S3Object object = s3Client.getObject(new GetObjectRequest(s3ObjectSummary.getBucketName(), s3ObjectSummary.getKey()));
-                                    InputStream objectData = object.getObjectContent();
-                                    var filename = s3ObjectSummary.getKey().substring(s3ObjectSummary.getKey().lastIndexOf("/") + 1);
+                                            if (!filename.equals("_SUCCESS")) {
+                                                response.append(System.getProperty("line.separator"));
+                                                response.append("Elaborating.... => ").append(s3ObjectSummary.getKey()).append(", size ").append(FileUtils.byteCountToDisplaySize(s3ObjectSummary.getSize())).append(System.getProperty("line.separator"));
+                                                response.append(System.getProperty("line.separator"));
 
-                                    if (!filename.equals("_SUCCESS")) {
-                                        response.append(System.getProperty("line.separator"));
-                                        response.append("Elaborating.... => ").append(s3ObjectSummary.getKey()).append(", size ").append(FileUtils.byteCountToDisplaySize(s3ObjectSummary.getSize())).append(System.getProperty("line.separator"));
-                                        response.append(System.getProperty("line.separator"));
-
-                                        try {
-                                            serviceDownloadS3Files.downloadS3Files(s3Client, s3ObjectSummary, Paths.get("src", "test", "resources", prop.getProperty("s3.prefixField")), filename, row, response);
-                                        } catch (IOException e) {
-                                            response.append("Error!  ").append(e.getMessage()).append(System.getProperty("line.separator"));
+                                                try {
+                                                    serviceDownloadS3Files.downloadS3Files(s3Client, s3ObjectSummary, Paths.get("src", "test", "resources", prop.getProperty("s3.prefixField")), filename, row, response);
+                                                } catch (IOException e) {
+                                                    response.append("Error!  ").append(e.getMessage()).append(System.getProperty("line.separator"));
+                                                }
+                                            }
                                         }
-                                    }
-
                                 });
                                 response.append("-----------------------------------------------------------------------------------------------------------------------------------------").append(System.getProperty("line.separator"));
 
                             });
+
                         } else {
 
                             response.append("-----------------------------------------------------------------------------------------------------------------------------------------").append(System.getProperty("line.separator"));
@@ -317,33 +313,43 @@ public class ParquetsDialog extends JDialog {
                                     .append(String.valueOf(result.getObjectSummaries().size())).append(System.getProperty("line.separator"));
                             response.append(System.getProperty("line.separator"));
 
-                            result.getObjectSummaries().forEach(s3ObjectSummary -> {
-                                response.append("Parquet [ ").append(new SimpleDateFormat("dd-MM-yyy HH:mm:ss").format(s3ObjectSummary.getLastModified())).append(" ] :: ").append(s3ObjectSummary.getKey()).append(" , size :: ")
-                                        .append(FileUtils.byteCountToDisplaySize(s3ObjectSummary.getSize())).append(System.getProperty("line.separator"));
-                            });
-                            response.append("-----------------------------------------------------------------------------------------------------------------------------------------").append(System.getProperty("line.separator"));
+                            if (delete) {
+                                result.getObjectSummaries().forEach(s3ObjectSummary -> {
+                                    s3Client.deleteObject(new DeleteObjectRequest(s3ObjectSummary.getBucketName(), s3ObjectSummary.getKey()));
 
-                            if (!result.getObjectSummaries().isEmpty() && result.getObjectSummaries().size() >= limit + 1) {
-
-                                result.getObjectSummaries().subList(0, limit + 1).forEach(objectSummary -> {
-
-                                    S3Object object = s3Client.getObject(new GetObjectRequest(objectSummary.getBucketName(), objectSummary.getKey()));
-                                    InputStream objectData = object.getObjectContent();
-                                    var filename = objectSummary.getKey().substring(objectSummary.getKey().lastIndexOf("/") + 1);
-
-                                    if (!filename.equals("_SUCCESS")) {
-                                        response.append(System.getProperty("line.separator"));
-                                        response.append("Elaborating.... => ").append(objectSummary.getKey()).append(", size ").append(FileUtils.byteCountToDisplaySize(objectSummary.getSize())).append(System.getProperty("line.separator"));
-                                        response.append(System.getProperty("line.separator"));
-
-                                        try {
-                                            serviceDownloadS3Files.downloadS3Files(s3Client, objectSummary, Paths.get("src", "test", "resources", prop.getProperty("s3.prefixField")), filename, row, response);
-                                        } catch (IOException e) {
-                                            response.append("Error!  ").append(e.getMessage()).append(System.getProperty("line.separator"));
-                                        }
-                                    }
-
+                                    response.append("Parquet delete [ ").append(new SimpleDateFormat("dd-MM-yyy HH:mm:ss").format(s3ObjectSummary.getLastModified())).append(" ] :: ").append(s3ObjectSummary.getKey()).append(" , size :: ")
+                                            .append(FileUtils.byteCountToDisplaySize(s3ObjectSummary.getSize())).append(System.getProperty("line.separator"));
                                 });
+                            }else{
+
+                                result.getObjectSummaries().forEach(s3ObjectSummary -> {
+                                    response.append("Parquet [ ").append(new SimpleDateFormat("dd-MM-yyy HH:mm:ss").format(s3ObjectSummary.getLastModified())).append(" ] :: ").append(s3ObjectSummary.getKey()).append(" , size :: ")
+                                            .append(FileUtils.byteCountToDisplaySize(s3ObjectSummary.getSize())).append(System.getProperty("line.separator"));
+                                });
+                                response.append("-----------------------------------------------------------------------------------------------------------------------------------------").append(System.getProperty("line.separator"));
+
+                                if (!result.getObjectSummaries().isEmpty() && result.getObjectSummaries().size() >= limit + 1) {
+
+                                    result.getObjectSummaries().subList(0, limit + 1).forEach(objectSummary -> {
+
+                                        S3Object object = s3Client.getObject(new GetObjectRequest(objectSummary.getBucketName(), objectSummary.getKey()));
+                                        InputStream objectData = object.getObjectContent();
+                                        var filename = objectSummary.getKey().substring(objectSummary.getKey().lastIndexOf("/") + 1);
+
+                                        if (!filename.equals("_SUCCESS")) {
+                                            response.append(System.getProperty("line.separator"));
+                                            response.append("Elaborating.... => ").append(objectSummary.getKey()).append(", size ").append(FileUtils.byteCountToDisplaySize(objectSummary.getSize())).append(System.getProperty("line.separator"));
+                                            response.append(System.getProperty("line.separator"));
+
+                                            try {
+                                                serviceDownloadS3Files.downloadS3Files(s3Client, objectSummary, Paths.get("src", "test", "resources", prop.getProperty("s3.prefixField")), filename, row, response);
+                                            } catch (IOException e) {
+                                                response.append("Error!  ").append(e.getMessage()).append(System.getProperty("line.separator"));
+                                            }
+                                        }
+
+                                    });
+                                }
                             }
                         }
 
@@ -376,7 +382,9 @@ public class ParquetsDialog extends JDialog {
             .msNumber("01173").build(), Entity.builder().name("fastening").msName("meinfrafasteningbtch").endpoint("meinfrafasteningbtch.glin-ap31312mp02083-dev-platform-namespace")
             .msNumber("02083").build(), Entity.builder().name("winding").msName("mewindingnetwbtch").endpoint("mewindingnetwbtch.glin-ap31312mp01174-dev-platform-namespace")
             .msNumber("01174").build(),Entity.builder().name("support").msName("meinfrasupportbtch").endpoint("meinfrasupportbtch.glin-ap31312mp02080-dev-platform-namespace")
-            .msNumber("02080").build());
+            .msNumber("02080").build(),Entity.builder().name("other").msName("meinfraotherbtch").endpoint("meinfraotherbtch.glin-ap31312mp02082-dev-platform-namespace")
+            .msNumber("02082").build(),Entity.builder().name("manhole").msName("meinframanholebtch").endpoint("meinframanholebtch.glin-ap31312mp02075-dev-platform-namespace")
+            .msNumber("02075").build());
 
     final static List<String> ENTITY = List.of("bay", "busbar", "compensator", "equipment", "grounding", "line", "node", "esegment", "station", "switch", "system", "terminal", "transformer", "winding","fastening");
 

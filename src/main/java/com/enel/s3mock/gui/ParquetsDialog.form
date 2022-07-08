@@ -107,6 +107,8 @@
                     <item value="MANHOLE"/>
                     <item value="FASTENING"/>
                     <item value="SUPPORT"/>
+                    <item value="OTHER"/>
+                    <item value="MANHOLE"/>
                   </model>
                   <name value="comboEntity"/>
                 </properties>
