@@ -28,6 +28,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import javax.swing.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Paths;
@@ -185,7 +186,7 @@ public class S3ListingObjectsTest {
                                 , Paths.get("src", "test", "resources", prop.getProperty("s3.prefixField"))
                                 , filename
                                 , Integer.parseInt(prop.getProperty("limit.row"))
-                                , new StringBuffer());
+                                , new StringBuffer(), new JTable());
                     } catch (IOException e) {
                         e.printStackTrace();
                     }

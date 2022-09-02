@@ -27,6 +27,7 @@ import reactor.core.scheduler.Schedulers;
 
 import javax.swing.*;
 import javax.swing.plaf.metal.MetalLookAndFeel;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.IOException;
@@ -55,6 +56,9 @@ public class ParquetsDialog extends JDialog {
     private JScrollPane DisplayLabelScroll;
     private JComboBox comboBox3;
     private JCheckBox checkBox1;
+    private JScrollPane TableScroll;
+    private JTable tableDisplay;
+    private JTable table1;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -95,6 +99,12 @@ public class ParquetsDialog extends JDialog {
 
     private void onOK() {
 
+
+        String[] columnNames = {"First Name", "Last Name"};
+        Object[][] data = {{"Kathy", "Smith"},{"John", "Doe"}};
+        table1 = new JTable(data, columnNames);
+        table1.setFillsViewportHeight(true);
+
         AtomicReference<String> entitySelectString = new AtomicReference<String>();
         AtomicReference<String> countrySelectString = new AtomicReference<String>();
         AtomicReference<String> levelSelectString = new AtomicReference<String>();
@@ -105,6 +115,8 @@ public class ParquetsDialog extends JDialog {
         AtomicReference<Boolean> checkDelete = new AtomicReference<Boolean>();
         AtomicReference<String> snapshotString = new AtomicReference<String>();
         AtomicReference<JScrollPane> arJScrollPane = new AtomicReference<JScrollPane>();
+        AtomicReference<JScrollPane> tabJScrollPane = new AtomicReference<JScrollPane>();
+        AtomicReference<JTable> arJTable = new AtomicReference<JTable>();
 
         Arrays.stream(entity.getComponents()).forEach(component -> {
             if (component.getClass().equals(JComboBox.class) && ((JComboBox<?>) component).getName().equals("comboEntity"))
@@ -145,6 +157,14 @@ public class ParquetsDialog extends JDialog {
                 arJTextPane.set((JTextPane) ((JScrollPane) component).getViewport().getView());
         });
 
+        Arrays.stream(entity.getComponents()).forEach(component -> {
+            if (component.getClass().equals(JScrollPane.class) && ((JScrollPane) component).getName().equals("TableScroll")) {
+
+                arJTable.set((JTable) ((JScrollPane) component).getViewport().getView());
+
+            }
+        });
+
         var logInfo = "[".concat(entitySelectString.get().toUpperCase(Locale.ROOT)).concat("] [").concat(countrySelectString.get().toUpperCase(Locale.ROOT)).concat("] [").concat(levelSelectString.get().toUpperCase(Locale.ROOT)).concat("]");
 
         /*
@@ -160,7 +180,7 @@ public class ParquetsDialog extends JDialog {
         var eleEntity = ENTITIES.stream().filter(entity1 -> entity1.getName().equals(entitySelectString.get())).collect(Collectors.toList()).stream().findFirst().get();
 
         listingObjectsTest(entitySelectString.get().concat(countrySelectString.get()).concat(levelSelectString.get())
-                , eleEntity.getMsName(), eleEntity.getMsNumber(), arJTextPane.get(), Integer.parseInt(limitSelectString.get()), Integer.parseInt(rowSelectString.get()), logInfo, envSelectString.get(), checkDelete.get());
+                , eleEntity.getMsName(), eleEntity.getMsNumber(), arJTextPane.get(), Integer.parseInt(limitSelectString.get()), Integer.parseInt(rowSelectString.get()), logInfo, envSelectString.get(), checkDelete.get(), arJTable.get());
     }
 
 
@@ -200,7 +220,7 @@ public class ParquetsDialog extends JDialog {
      * @param enviroment
      */
 
-    public void listingObjectsTest(String entityName, String mName, String msNumber, JTextPane jTextPane, int limit, int row, String info, String enviroment, boolean delete) {
+    public void listingObjectsTest(String entityName, String mName, String msNumber, JTextPane jTextPane, int limit, int row, String info, String enviroment, boolean delete, JTable tableData) {
 
 
         var prop = new PropertyParser();
@@ -295,7 +315,7 @@ public class ParquetsDialog extends JDialog {
                                                 response.append(System.getProperty("line.separator"));
 
                                                 try {
-                                                    serviceDownloadS3Files.downloadS3Files(s3Client, s3ObjectSummary, Paths.get("src", "test", "resources", prop.getProperty("s3.prefixField")), filename, row, response);
+                                                    serviceDownloadS3Files.downloadS3Files(s3Client, s3ObjectSummary, Paths.get("src", "test", "resources", prop.getProperty("s3.prefixField")), filename, row, response, tableData);
                                                 } catch (IOException e) {
                                                     response.append("Error!  ").append(e.getMessage()).append(System.getProperty("line.separator"));
                                                 }
@@ -342,7 +362,7 @@ public class ParquetsDialog extends JDialog {
                                             response.append(System.getProperty("line.separator"));
 
                                             try {
-                                                serviceDownloadS3Files.downloadS3Files(s3Client, objectSummary, Paths.get("src", "test", "resources", prop.getProperty("s3.prefixField")), filename, row, response);
+                                                serviceDownloadS3Files.downloadS3Files(s3Client, objectSummary, Paths.get("src", "test", "resources", prop.getProperty("s3.prefixField")), filename, row, response, tableData);
                                             } catch (IOException e) {
                                                 response.append("Error!  ").append(e.getMessage()).append(System.getProperty("line.separator"));
                                             }
@@ -384,7 +404,8 @@ public class ParquetsDialog extends JDialog {
             .msNumber("01174").build(),Entity.builder().name("support").msName("meinfrasupportbtch").endpoint("meinfrasupportbtch.glin-ap31312mp02080-dev-platform-namespace")
             .msNumber("02080").build(),Entity.builder().name("other").msName("meinfraotherbtch").endpoint("meinfraotherbtch.glin-ap31312mp02082-dev-platform-namespace")
             .msNumber("02082").build(),Entity.builder().name("manhole").msName("meinframanholebtch").endpoint("meinframanholebtch.glin-ap31312mp02075-dev-platform-namespace")
-            .msNumber("02075").build());
+            .msNumber("02075").build(),Entity.builder().name("extractline").msName("menetworkextrbatch").endpoint("menetworkextrbatch.glin-ap31312mp02018-dev-platform-namespace")
+            .msNumber("02018").build());
 
     final static List<String> ENTITY = List.of("bay", "busbar", "compensator", "equipment", "grounding", "line", "node", "esegment", "station", "switch", "system", "terminal", "transformer", "winding","fastening");
 

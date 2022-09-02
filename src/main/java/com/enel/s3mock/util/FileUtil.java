@@ -6,6 +6,7 @@ import com.amazonaws.services.s3.model.ListObjectsV2Result;
 import com.amazonaws.services.s3.model.S3Object;
 import lombok.extern.slf4j.Slf4j;
 
+import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -18,7 +19,7 @@ import java.util.UUID;
 @Slf4j
 public class FileUtil {
 
-    public static void saveParquetAndPrintFile(AmazonS3 s3Client, ListObjectsV2Result result, Path savePath, String filename, int rows, StringBuffer buffer) throws IOException {
+    public static void saveParquetAndPrintFile(AmazonS3 s3Client, ListObjectsV2Result result, Path savePath, String filename, int rows, StringBuffer buffer,JTable tableData) throws IOException {
 
         Optional.of(Files.createDirectories(savePath)).map(path -> {
 
@@ -56,7 +57,7 @@ public class FileUtil {
                     call ParquetUtil to print file
                      */
                 assert file != null;
-                ParquetUtil.printParquestFile(new org.apache.hadoop.fs.Path(file.toUri()),rows, buffer);
+                ParquetUtil.printParquestFile(new org.apache.hadoop.fs.Path(file.toUri()),rows, buffer,tableData);
 
 
             });

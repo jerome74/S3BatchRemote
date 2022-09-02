@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,7 +25,7 @@ import java.util.Optional;
 @Slf4j
 public class ServiceDownloadS3FilesImpl  implements ServiceDownloadS3Files{
 
-    public  Path downloadS3Files(AmazonS3 s3Client, S3ObjectSummary objectSummary, Path savePath, String filename, int rows, StringBuffer buffer) throws IOException {
+    public  Path downloadS3Files(AmazonS3 s3Client, S3ObjectSummary objectSummary, Path savePath, String filename, int rows, StringBuffer buffer , JTable tableData) throws IOException {
 
        return  Optional.of(Files.createDirectories(savePath)).map(path -> {
 
@@ -56,7 +57,7 @@ public class ServiceDownloadS3FilesImpl  implements ServiceDownloadS3Files{
                     call ParquetUtil to print file
                      */
                 assert file != null;
-                ParquetUtil.printParquestFile(new org.apache.hadoop.fs.Path(file.toUri()),rows, buffer);
+                ParquetUtil.printParquestFile(new org.apache.hadoop.fs.Path(file.toUri()),rows, buffer, tableData);
 
 
             return path;
