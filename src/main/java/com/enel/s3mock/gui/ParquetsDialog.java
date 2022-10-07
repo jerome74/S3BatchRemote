@@ -405,7 +405,15 @@ public class ParquetsDialog extends JDialog {
             .msNumber("02080").build(),Entity.builder().name("other").msName("meinfraotherbtch").endpoint("meinfraotherbtch.glin-ap31312mp02082-dev-platform-namespace")
             .msNumber("02082").build(),Entity.builder().name("manhole").msName("meinframanholebtch").endpoint("meinframanholebtch.glin-ap31312mp02075-dev-platform-namespace")
             .msNumber("02075").build(),Entity.builder().name("extractline").msName("menetworkextrbatch").endpoint("menetworkextrbatch.glin-ap31312mp02018-dev-platform-namespace")
-            .msNumber("02018").build());
+            .msNumber("02018").build(),Entity.builder().name("windinghst").msName("mewindinghstnetwbtch").endpoint("mewindinghstnetwbtch.glin-ap31312mp02580-dev-platform-namespace")
+            .msNumber("02580").build(),Entity.builder().name("stationhst").msName("mestationhstnetwbtch").endpoint("mestationhstnetwbtch.glin-ap31312mp02555-dev-platform-namespace")
+            .msNumber("02555").build(),Entity.builder().name("linehst").msName("melinehstnetwbtch").endpoint("melinehstnetwbtch.glin-ap31312mp02557-dev-platform-namespace")
+            .msNumber("02557").build(),Entity.builder().name("connectionhst").msName("meconnecthstnetwbtch").endpoint("meconnecthstnetwbtch.glin-ap31312mp02581-dev-platform-namespace")
+            .msNumber("02581").build(),Entity.builder().name("transformerhst").msName("metransfhstnetwbtch").endpoint("metransfhstnetwbtch.glin-ap31312mp02558-dev-platform-namespace")
+            .msNumber("02558").build(),Entity.builder().name("switchhst").msName("meswitchhstnetwbtch").endpoint("meswitchhstnetwbtch.glin-ap31312mp02577-dev-platform-namespace")
+            .msNumber("02577").build(),Entity.builder().name("groundinghst").msName("megroundhstnetwbtch").endpoint("megroundhstnetwbtch.glin-ap31312mp02559-dev-platform-namespace")
+            .msNumber("02559").build(),Entity.builder().name("segmenthst").msName("mesegmenthstnetwbtch").endpoint("mesegmenthstnetwbtch.glin-ap31312mp02554-dev-platform-namespace")
+            .msNumber("02554").build());
 
     final static List<String> ENTITY = List.of("bay", "busbar", "compensator", "equipment", "grounding", "line", "node", "esegment", "station", "switch", "system", "terminal", "transformer", "winding","fastening");
 

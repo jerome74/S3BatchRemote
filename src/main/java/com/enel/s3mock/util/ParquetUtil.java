@@ -24,6 +24,7 @@ import javax.swing.table.DefaultTableModel;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -82,6 +83,7 @@ public class ParquetUtil {
     public static final long JULIAN_DAY_NUMBER_FOR_UNIX_EPOCH = 2440588;
     public static final long NANOS_PER_MILLISECOND = 1000000;
     public static final SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'mm:ss");
+    public static final SimpleDateFormat formatterSimple = new SimpleDateFormat("yyyy-MM-dd");
 
     private static void printTable(Group g, JTable tableData,Integer iValue , DefaultTableModel model){
         int fieldCount = g.getType().getFieldCount();
@@ -99,14 +101,30 @@ public class ParquetUtil {
             for (int index = 0; index < valueCount; index++) {
                 if (fieldName.equals("begindatetime") || fieldName.equals("enddatetime") ||  fieldName.equals("extractiondate")) {
                     if (fieldType.isPrimitive()) {
-                        var strInt96Value = g.getValueToString(field, index);
-                        var byteArray = to_byte(strInt96Value.substring(strInt96Value.indexOf("[") + 1, strInt96Value.indexOf("]")).replace(" ", "").split(","));
-                        NanoTime nt = NanoTime.fromBinary(Binary.fromConstantByteArray(byteArray));
-                        int julianDay = nt.getJulianDay();
-                        long nanosOfDay = nt.getTimeOfDayNanos();
-                        long dateTime = (julianDay - JULIAN_DAY_NUMBER_FOR_UNIX_EPOCH) * DateTimeConstants.MILLIS_PER_DAY
-                                + nanosOfDay / NANOS_PER_MILLISECOND;
-                        elementRow.add(formatter.format(new Date(dateTime)));
+
+                        try {
+                            var strInt96Value = g.getValueToString(field, index);
+                            var byteArray = to_byte(strInt96Value.substring(strInt96Value.indexOf("[") + 1, strInt96Value.indexOf("]")).replace(" ", "").split(","));
+                            NanoTime nt = NanoTime.fromBinary(Binary.fromConstantByteArray(byteArray));
+                            int julianDay = nt.getJulianDay();
+                            long nanosOfDay = nt.getTimeOfDayNanos();
+                            long dateTime = (julianDay - JULIAN_DAY_NUMBER_FOR_UNIX_EPOCH) * DateTimeConstants.MILLIS_PER_DAY
+                                    + nanosOfDay / NANOS_PER_MILLISECOND;
+                            elementRow.add(formatter.format(new Date(dateTime)));
+                        }catch (Exception e){
+                            try {
+                            var strInt96Value = g.getInteger(field, index);
+                            Calendar cal = Calendar.getInstance();
+                            String dt = "1970-01-01";  // Start date
+                            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+                            cal.setTime(sdf.parse(dt));
+                            cal.add(Calendar.DATE, strInt96Value);
+
+                            elementRow.add(formatterSimple.format(cal.getTime()));
+                            }catch (Exception exception){
+                                elementRow.add(g.getValueToString(field, index));
+                            }
+                        }
                     }
                 } else if (fieldType.isPrimitive()) {
                     elementRow.add(g.getValueToString(field, index));

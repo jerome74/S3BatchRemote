@@ -3,7 +3,7 @@
   <grid id="cbd77" binding="contentPane" layout-manager="GridLayoutManager" row-count="2" column-count="1" same-size-horizontally="true" same-size-vertically="false" hgap="-1" vgap="-1">
     <margin top="10" left="10" bottom="10" right="10"/>
     <constraints>
-      <xy x="48" y="54" width="990" height="656"/>
+      <xy x="48" y="54" width="1396" height="694"/>
     </constraints>
     <properties>
       <name value="mainPanel"/>
@@ -59,7 +59,7 @@
         <properties/>
         <border type="none"/>
         <children>
-          <grid id="d8251" binding="entity" layout-manager="GridLayoutManager" row-count="5" column-count="7" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
+          <grid id="d8251" binding="entity" layout-manager="GridLayoutManager" row-count="6" column-count="7" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
             <margin top="0" left="0" bottom="0" right="0"/>
             <constraints>
               <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
@@ -93,17 +93,25 @@
                     <item value="BUSBAR"/>
                     <item value="COMPENSATOR"/>
                     <item value="CONNECTION"/>
+                    <item value="CONNECTIONHST"/>
                     <item value="EQUIPMENT"/>
                     <item value="GROUNDING"/>
+                    <item value="GROUNDINGHST"/>
                     <item value="LINE"/>
+                    <item value="LINEHST"/>
                     <item value="NODE"/>
                     <item value="SEGMENT"/>
+                    <item value="SEGMENTHST"/>
                     <item value="STATION"/>
+                    <item value="STATIONHST"/>
                     <item value="SWITCH"/>
+                    <item value="SWITCHHST"/>
                     <item value="SYSTEM"/>
                     <item value="TERMINAL"/>
                     <item value="TRANSFORMER"/>
+                    <item value="TRANSFORMERHST"/>
                     <item value="WINDING"/>
+                    <item value="WINDINGHST"/>
                     <item value="MANHOLE"/>
                     <item value="FASTENING"/>
                     <item value="SUPPORT"/>
@@ -130,6 +138,7 @@
                     <item value="RIO"/>
                     <item value="GOIAS"/>
                     <item value="CEARA"/>
+                    <item value="PERU"/>
                   </model>
                   <name value="comboCountry"/>
                 </properties>
@@ -164,40 +173,6 @@
                   <text value="ROWS"/>
                 </properties>
               </component>
-              <component id="f3007" class="javax.swing.JComboBox" binding="comboBox1" default-binding="true">
-                <constraints>
-                  <grid row="0" column="4" row-span="1" col-span="1" vsize-policy="0" hsize-policy="2" anchor="8" fill="1" indent="0" use-parent-layout="false"/>
-                </constraints>
-                <properties>
-                  <enabled value="false"/>
-                  <model>
-                    <item value="1"/>
-                    <item value="2"/>
-                    <item value="3"/>
-                    <item value="4"/>
-                    <item value="5"/>
-                    <item value="6"/>
-                    <item value="7"/>
-                    <item value="8"/>
-                    <item value="9"/>
-                    <item value="10"/>
-                  </model>
-                  <name value="comboFile"/>
-                </properties>
-              </component>
-              <component id="d0500" class="javax.swing.JComboBox" binding="comboBox2" default-binding="true">
-                <constraints>
-                  <grid row="1" column="4" row-span="2" col-span="1" vsize-policy="0" hsize-policy="2" anchor="8" fill="1" indent="0" use-parent-layout="false"/>
-                </constraints>
-                <properties>
-                  <model>
-                    <item value="10"/>
-                    <item value="20"/>
-                    <item value="30"/>
-                  </model>
-                  <name value="comboRow"/>
-                </properties>
-              </component>
               <component id="5a9e8" class="javax.swing.JLabel">
                 <constraints>
                   <grid row="0" column="3" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
@@ -208,7 +183,7 @@
               </component>
               <scrollpane id="58cca" binding="DisplayLabelScroll">
                 <constraints>
-                  <grid row="4" column="0" row-span="1" col-span="4" vsize-policy="7" hsize-policy="7" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+                  <grid row="5" column="0" row-span="1" col-span="4" vsize-policy="7" hsize-policy="7" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
                 </constraints>
                 <properties>
                   <name value="displayLabelScroll"/>
@@ -236,39 +211,9 @@
                   <text value="ENVIRONMENT"/>
                 </properties>
               </component>
-              <component id="3c4d7" class="javax.swing.JComboBox" binding="comboBox3" default-binding="true">
-                <constraints>
-                  <grid row="3" column="4" row-span="1" col-span="1" vsize-policy="0" hsize-policy="2" anchor="8" fill="1" indent="0" use-parent-layout="false"/>
-                </constraints>
-                <properties>
-                  <model>
-                    <item value="DEV"/>
-                    <item value="QA"/>
-                    <item value="PROD"/>
-                  </model>
-                  <name value="comboEnv"/>
-                </properties>
-              </component>
-              <component id="226c7" class="javax.swing.JLabel">
-                <constraints>
-                  <grid row="0" column="5" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                </constraints>
-                <properties>
-                  <text value="DELETE"/>
-                </properties>
-              </component>
-              <component id="95ca6" class="javax.swing.JCheckBox" binding="checkBox1" default-binding="true">
-                <constraints>
-                  <grid row="0" column="6" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                </constraints>
-                <properties>
-                  <name value="checkDelete"/>
-                  <text value=""/>
-                </properties>
-              </component>
               <scrollpane id="ac3fd" binding="TableScroll">
                 <constraints>
-                  <grid row="4" column="4" row-span="1" col-span="3" vsize-policy="7" hsize-policy="7" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+                  <grid row="5" column="4" row-span="1" col-span="3" vsize-policy="7" hsize-policy="7" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
                 </constraints>
                 <properties>
                   <horizontalScrollBarPolicy value="30"/>
@@ -286,6 +231,70 @@
                   </component>
                 </children>
               </scrollpane>
+              <component id="d0500" class="javax.swing.JComboBox" binding="comboBox2" default-binding="true">
+                <constraints>
+                  <grid row="1" column="6" row-span="2" col-span="1" vsize-policy="0" hsize-policy="2" anchor="8" fill="1" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <model>
+                    <item value="10"/>
+                    <item value="20"/>
+                    <item value="30"/>
+                  </model>
+                  <name value="comboRow"/>
+                </properties>
+              </component>
+              <component id="3c4d7" class="javax.swing.JComboBox" binding="comboBox3" default-binding="true">
+                <constraints>
+                  <grid row="3" column="6" row-span="1" col-span="1" vsize-policy="0" hsize-policy="2" anchor="8" fill="1" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <model>
+                    <item value="DEV"/>
+                    <item value="QA"/>
+                    <item value="PROD"/>
+                  </model>
+                  <name value="comboEnv"/>
+                </properties>
+              </component>
+              <component id="226c7" class="javax.swing.JLabel">
+                <constraints>
+                  <grid row="4" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <text value="DELETE"/>
+                </properties>
+              </component>
+              <component id="95ca6" class="javax.swing.JCheckBox" binding="checkBox1" default-binding="true">
+                <constraints>
+                  <grid row="4" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <name value="checkDelete"/>
+                  <text value=""/>
+                </properties>
+              </component>
+              <component id="f3007" class="javax.swing.JComboBox" binding="comboBox1" default-binding="true">
+                <constraints>
+                  <grid row="0" column="6" row-span="1" col-span="1" vsize-policy="0" hsize-policy="2" anchor="8" fill="1" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <enabled value="false"/>
+                  <model>
+                    <item value="1"/>
+                    <item value="2"/>
+                    <item value="3"/>
+                    <item value="4"/>
+                    <item value="5"/>
+                    <item value="6"/>
+                    <item value="7"/>
+                    <item value="8"/>
+                    <item value="9"/>
+                    <item value="10"/>
+                  </model>
+                  <name value="comboFile"/>
+                </properties>
+              </component>
             </children>
           </grid>
         </children>
