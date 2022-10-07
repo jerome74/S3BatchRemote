@@ -9,13 +9,8 @@ import com.amazonaws.services.s3.model.*;
 import com.enel.s3mock.model.*;
 import com.enel.s3mock.service.ServiceDownloadS3FilesImpl;
 import com.enel.s3mock.util.PropertyParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import org.apache.commons.io.FileUtils;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.util.LinkedMultiValueMap;
@@ -23,21 +18,19 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import javax.swing.*;
-import javax.swing.plaf.metal.MetalLookAndFeel;
-import javax.swing.table.DefaultTableModel;
+import javax.ws.rs.core.UriBuilder;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
+import java.net.URI;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -58,6 +51,9 @@ public class ParquetsDialog extends JDialog {
     private JCheckBox checkBox1;
     private JScrollPane TableScroll;
     private JTable tableDisplay;
+    private JEditorPane ediFileName;
+    private JButton S3Button;
+    private JButton S3DisplayButton;
     private JTable table1;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -73,6 +69,24 @@ public class ParquetsDialog extends JDialog {
             public void actionPerformed(ActionEvent e) {
                 onOK();
             }
+        });
+
+        S3Button.addActionListener((ActionEvent e) -> {
+            JFileChooser fc = new JFileChooser("src/test/resources/");
+            int result = fc.showSaveDialog(getRootPane());
+            final var selectedFile = fc.getSelectedFile();
+            ediFileName.setText(selectedFile.getAbsolutePath());
+
+        });
+
+        S3DisplayButton.addActionListener((ActionEvent e) -> {
+
+
+            Path path = Paths.get(ediFileName.getText());
+            var jtable = (JTable)TableScroll.getViewport().getView();
+
+            serviceDownloadS3Files.displayFile(path,jtable,Integer.parseInt(comboBox2.getSelectedItem().toString()), new StringBuffer());
+
         });
 
         buttonCancel.addActionListener(new ActionListener() {
@@ -310,10 +324,6 @@ public class ParquetsDialog extends JDialog {
                                             var filename = s3ObjectSummary.getKey().substring(s3ObjectSummary.getKey().lastIndexOf("/") + 1);
 
                                             if (!filename.equals("_SUCCESS")) {
-                                                response.append(System.getProperty("line.separator"));
-                                                response.append("Elaborating.... => ").append(s3ObjectSummary.getKey()).append(", size ").append(FileUtils.byteCountToDisplaySize(s3ObjectSummary.getSize())).append(System.getProperty("line.separator"));
-                                                response.append(System.getProperty("line.separator"));
-
                                                 try {
                                                     serviceDownloadS3Files.downloadS3Files(s3Client, s3ObjectSummary, Paths.get("src", "test", "resources", prop.getProperty("s3.prefixField")), filename, row, response, tableData);
                                                 } catch (IOException e) {
@@ -357,10 +367,6 @@ public class ParquetsDialog extends JDialog {
                                         var filename = objectSummary.getKey().substring(objectSummary.getKey().lastIndexOf("/") + 1);
 
                                         if (!filename.equals("_SUCCESS")) {
-                                            response.append(System.getProperty("line.separator"));
-                                            response.append("Elaborating.... => ").append(objectSummary.getKey()).append(", size ").append(FileUtils.byteCountToDisplaySize(objectSummary.getSize())).append(System.getProperty("line.separator"));
-                                            response.append(System.getProperty("line.separator"));
-
                                             try {
                                                 serviceDownloadS3Files.downloadS3Files(s3Client, objectSummary, Paths.get("src", "test", "resources", prop.getProperty("s3.prefixField")), filename, row, response, tableData);
                                             } catch (IOException e) {
@@ -413,7 +419,8 @@ public class ParquetsDialog extends JDialog {
             .msNumber("02558").build(),Entity.builder().name("switchhst").msName("meswitchhstnetwbtch").endpoint("meswitchhstnetwbtch.glin-ap31312mp02577-dev-platform-namespace")
             .msNumber("02577").build(),Entity.builder().name("groundinghst").msName("megroundhstnetwbtch").endpoint("megroundhstnetwbtch.glin-ap31312mp02559-dev-platform-namespace")
             .msNumber("02559").build(),Entity.builder().name("segmenthst").msName("mesegmenthstnetwbtch").endpoint("mesegmenthstnetwbtch.glin-ap31312mp02554-dev-platform-namespace")
-            .msNumber("02554").build());
+            .msNumber("02554").build(),Entity.builder().name("busbarhst").msName("mebusbarhstnetwbtch").endpoint("mebusbarhstnetwbtch.glin-ap31312mp02576-dev-platform-namespace")
+            .msNumber("02576").build());
 
     final static List<String> ENTITY = List.of("bay", "busbar", "compensator", "equipment", "grounding", "line", "node", "esegment", "station", "switch", "system", "terminal", "transformer", "winding","fastening");
 

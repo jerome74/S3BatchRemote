@@ -53,14 +53,13 @@ public class ServiceDownloadS3FilesImpl  implements ServiceDownloadS3Files{
                     buffer.append("[ S3 ] - error to copy file : ").append(ex.getMessage()).append(System.getProperty("line.separator"));
                 }
 
-                 /*
-                    call ParquetUtil to print file
-                     */
-                assert file != null;
-                ParquetUtil.printParquestFile(new org.apache.hadoop.fs.Path(file.toUri()),rows, buffer, tableData);
-
 
             return path;
         }).orElse(Path.of(""));
+    }
+
+    public void displayFile( Path file,JTable tableData,int rows, StringBuffer buffer){
+        assert file != null;
+        ParquetUtil.printParquestFile(new org.apache.hadoop.fs.Path(file.toUri()), rows,  buffer, tableData);
     }
 }
