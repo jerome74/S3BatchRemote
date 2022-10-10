@@ -230,6 +230,8 @@
                 </constraints>
                 <properties>
                   <model>
+                    <item value="1"/>
+                    <item value="2"/>
                     <item value="10"/>
                     <item value="20"/>
                     <item value="30"/>
@@ -257,16 +259,11 @@
                 <properties>
                   <enabled value="true"/>
                   <model>
+                    <item value="0"/>
                     <item value="1"/>
-                    <item value="2"/>
-                    <item value="3"/>
-                    <item value="4"/>
                     <item value="5"/>
-                    <item value="6"/>
-                    <item value="7"/>
-                    <item value="8"/>
-                    <item value="9"/>
                     <item value="10"/>
+                    <item value="20"/>
                   </model>
                   <name value="comboFile"/>
                 </properties>

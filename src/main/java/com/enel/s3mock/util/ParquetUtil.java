@@ -45,11 +45,11 @@ public class ParquetUtil {
             try {
                 while (null != (pages = r.readNextRowGroup())) {
                     final long rows = pages.getRowCount();
-                   log.info("#################");
-                   log.info("Number of rows: " + rows);
-                   log.info("#################");
-                   //log.info("Read N. " + rowToRead);
-                   //log.info("_________________________");
+                    log.info("#################");
+                    log.info("Number of rows: " + rows);
+                    log.info("#################");
+                    //log.info("Read N. " + rowToRead);
+                    //log.info("_________________________");
 
                     buffer.append("#################").append(System.getProperty("line.separator"));
                     buffer.append(rowToRead).append(" first rows of ").append(rows).append(System.getProperty("line.separator"));
@@ -62,7 +62,7 @@ public class ParquetUtil {
                     for (int i = 0; i < rows; i++) {
                         final Group g = (Group) recordReader.read();
                         //buffer.append("----------------------------------------").append(System.getProperty("line.separator"));
-                        printTable((Group) recordReader.read(),tableData,i,model);
+                        printTable((Group) recordReader.read(), tableData, i, model);
                         //printGroup(g, buffer);
 
                         if (rowRed.incrementAndGet() == rowToRead)
@@ -74,8 +74,9 @@ public class ParquetUtil {
                 }
             } finally {
                 r.close();
-            }        } catch (IOException e) {
-           log.info("Error reading parquet file.");
+            }
+        } catch (IOException e) {
+            log.info("Error reading parquet file.");
             e.printStackTrace();
         }
     }
@@ -85,7 +86,7 @@ public class ParquetUtil {
     public static final SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'mm:ss");
     public static final SimpleDateFormat formatterSimple = new SimpleDateFormat("yyyy-MM-dd");
 
-    private static void printTable(Group g, JTable tableData,Integer iValue , DefaultTableModel model){
+    private static void printTable(Group g, JTable tableData, Integer iValue, DefaultTableModel model) {
         int fieldCount = g.getType().getFieldCount();
 
         var elementRow = new ArrayList<>();
@@ -95,59 +96,54 @@ public class ParquetUtil {
             String fieldName = fieldType.getName();
             var valueCount = g.getFieldRepetitionCount(field);
 
-            if (iValue == 0 )
-                model.addColumn(fieldName);
+
+            model.addColumn(fieldName);
+
+            if(valueCount == 0)
+                elementRow.add("");
 
             for (int index = 0; index < valueCount; index++) {
-                if (fieldName.equals("begindatetime") || fieldName.equals("enddatetime") ||  fieldName.equals("extractiondate")) {
-                    if (fieldType.isPrimitive()) {
-
-                        try {
-                            var strInt96Value = g.getValueToString(field, index);
-                            var byteArray = to_byte(strInt96Value.substring(strInt96Value.indexOf("[") + 1, strInt96Value.indexOf("]")).replace(" ", "").split(","));
-                            NanoTime nt = NanoTime.fromBinary(Binary.fromConstantByteArray(byteArray));
-                            int julianDay = nt.getJulianDay();
-                            long nanosOfDay = nt.getTimeOfDayNanos();
-                            long dateTime = (julianDay - JULIAN_DAY_NUMBER_FOR_UNIX_EPOCH) * DateTimeConstants.MILLIS_PER_DAY
-                                    + nanosOfDay / NANOS_PER_MILLISECOND;
-                            elementRow.add(formatter.format(new Date(dateTime)));
-                        }catch (Exception e){
-                            try {
-                            var strInt96Value = g.getInteger(field, index);
-                            Calendar cal = Calendar.getInstance();
-                            String dt = "1970-01-01";  // Start date
-                            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-                            cal.setTime(sdf.parse(dt));
-                            cal.add(Calendar.DATE, strInt96Value);
-
-                            elementRow.add(formatterSimple.format(cal.getTime()));
-                            }catch (Exception exception){
-                                elementRow.add(g.getValueToString(field, index));
-                            }
-                        }
+                if (fieldName.equals("begindatetime") || fieldName.equals("enddatetime")) {
+                    try {
+                        var strInt96Value = g.getValueToString(field, index);
+                        var byteArray = to_byte(strInt96Value.substring(strInt96Value.indexOf("[") + 1, strInt96Value.indexOf("]")).replace(" ", "").split(","));
+                        NanoTime nt = NanoTime.fromBinary(Binary.fromConstantByteArray(byteArray));
+                        int julianDay = nt.getJulianDay();
+                        long nanosOfDay = nt.getTimeOfDayNanos();
+                        long dateTime = (julianDay - JULIAN_DAY_NUMBER_FOR_UNIX_EPOCH) * DateTimeConstants.MILLIS_PER_DAY
+                                + nanosOfDay / NANOS_PER_MILLISECOND;
+                        elementRow.add(formatter.format(new Date(dateTime)));
+                    } catch (Exception e) {
+                        elementRow.add(g.getValueToString(field, index));
                     }
-                } else if (fieldType.isPrimitive()) {
+                } else if (fieldName.equals("extractiondate")) {
+                    try {
+                        var strInt96Value = g.getInteger(field, index);
+                        Calendar cal = Calendar.getInstance();
+                        String dt = "1970-01-01";  // Start date
+                        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+                        cal.setTime(sdf.parse(dt));
+                        cal.add(Calendar.DATE, strInt96Value);
+
+                        elementRow.add(formatterSimple.format(cal.getTime()));
+                    } catch (Exception exception) {
+                        elementRow.add(g.getValueToString(field, index));
+                    }
+
+                } else {
                     elementRow.add(g.getValueToString(field, index));
                 }
             }
 
         }
 
+        log.info("-----------------------------------------------");
+        log.info("elementRow = " + elementRow);
+        log.info("-----------------------------------------------");
         model.addRow(elementRow.toArray());
-
-
-          /* DefaultTableModel model = new DefaultTableModel();
-
-                model.addColumn("Col1");
-                model.addColumn("Col2");
-                model.addRow(new Object[]{"v1", "v2"});
-                model.addRow(new Object[]{"r1", "r2"});
-
-                arJTable.get().setModel(model);
-                arJTable.get().setVisible(true);*/
     }
 
-    public static void printGroup(Group g , StringBuffer buffer ) {
+    public static void printGroup(Group g, StringBuffer buffer) {
         int fieldCount = g.getType().getFieldCount();
         for (int field = 0; field < fieldCount; field++) {
             int valueCount = g.getFieldRepetitionCount(field);
@@ -156,7 +152,7 @@ public class ParquetUtil {
             String fieldName = fieldType.getName();
 
             for (int index = 0; index < valueCount; index++) {
-                if (fieldName.equals("begindatetime") || fieldName.equals("enddatetime") ||  fieldName.equals("extractiondate")) {
+                if (fieldName.equals("begindatetime") || fieldName.equals("enddatetime") || fieldName.equals("extractiondate")) {
                     if (fieldType.isPrimitive()) {
                         var strInt96Value = g.getValueToString(field, index);
                         var byteArray = to_byte(strInt96Value.substring(strInt96Value.indexOf("[") + 1, strInt96Value.indexOf("]")).replace(" ", "").split(","));
@@ -165,18 +161,18 @@ public class ParquetUtil {
                         long nanosOfDay = nt.getTimeOfDayNanos();
                         long dateTime = (julianDay - JULIAN_DAY_NUMBER_FOR_UNIX_EPOCH) * DateTimeConstants.MILLIS_PER_DAY
                                 + nanosOfDay / NANOS_PER_MILLISECOND;
-                       log.info(fieldName + " " + formatter.format(new Date(dateTime)));
-                       buffer.append(fieldName).append(" : ").append(formatter.format(new Date(dateTime))).append(System.getProperty("line.separator"));
+                        log.info(fieldName + " " + formatter.format(new Date(dateTime)));
+                        buffer.append(fieldName).append(" : ").append(formatter.format(new Date(dateTime))).append(System.getProperty("line.separator"));
                     }
                 } else if (fieldType.isPrimitive()) {
-                   log.info(fieldName + " " + g.getValueToString(field, index));
-                   buffer.append(fieldName).append(" : ").append(g.getValueToString(field, index)).append(System.getProperty("line.separator"));
-                    if(fieldName.equals("id"))
+                    log.info(fieldName + " " + g.getValueToString(field, index));
+                    buffer.append(fieldName).append(" : ").append(g.getValueToString(field, index)).append(System.getProperty("line.separator"));
+                    if (fieldName.equals("id"))
                         buffer.append("----------------------------------------").append(System.getProperty("line.separator"));
                 }
             }
         }
-       log.info("");
+        log.info("");
     }
 
 
