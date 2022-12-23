@@ -14,5 +14,10 @@ public class Entity {
     private String msName;
     private String msNumber;
     private String endpoint;
+    private String version;
+    private String extractor;
+    private String sparkEntity;
+
+
 
 }

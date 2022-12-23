@@ -8,7 +8,9 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.*;
 import com.enel.s3mock.model.*;
 import com.enel.s3mock.service.ServiceDownloadS3FilesImpl;
+import com.enel.s3mock.util.CountyLevel;
 import com.enel.s3mock.util.PropertyParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.io.FileUtils;
 import org.springframework.http.HttpHeaders;
@@ -17,22 +19,25 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.swing.*;
-import javax.ws.rs.core.UriBuilder;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
+import static com.enel.s3mock.util.IEntitiesUtil.*;
 
 public class ParquetsDialog extends JDialog {
     private JPanel contentPane;
@@ -42,11 +47,11 @@ public class ParquetsDialog extends JDialog {
     private JComboBox comboEntity;
     private JComboBox comboCountry;
     private JComboBox comboLevel;
-    private JTextPane DisplayLabel;
+    private JTextPane displayLabel;
     private JLabel ENTITYLabel;
     private JComboBox comboBox1;
     private JComboBox comboBox2;
-    private JScrollPane DisplayLabelScroll;
+    private JScrollPane displayLabelScroll;
     private JComboBox comboBox3;
     private JCheckBox checkBox1;
     private JScrollPane TableScroll;
@@ -54,16 +59,34 @@ public class ParquetsDialog extends JDialog {
     private JEditorPane ediFileName;
     private JButton S3Button;
     private JButton S3DisplayButton;
+    private JCheckBox checkAllCountries;
+    private JCheckBox checkExtraction;
     private JTable table1;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final ServiceDownloadS3FilesImpl serviceDownloadS3Files = new ServiceDownloadS3FilesImpl();
 
+    private java.util.List<String> LEVEL = java.util.List.of("m", "l", "h");
+    private java.util.List<String> COUNTRY = List.of("italy", "espana", "colombia", "chile", "peru", "romania", "saopaulo", "goias", "ceras", "rio");
+
     public ParquetsDialog() {
         setContentPane(contentPane);
         setModal(true);
         getRootPane().setDefaultButton(buttonOK);
+
+        var verticalBar = displayLabelScroll.getVerticalScrollBar();
+        AdjustmentListener downScroller = new AdjustmentListener() {
+            @Override
+            public void adjustmentValueChanged(AdjustmentEvent e) {
+                Adjustable adjustable = e.getAdjustable();
+                adjustable.setValue(adjustable.getMaximum());
+                verticalBar.removeAdjustmentListener(this);
+            }
+        };
+        verticalBar.addAdjustmentListener(downScroller);
+
+        displayLabel.setCaretPosition(displayLabel.getDocument().getLength());
 
         buttonOK.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
@@ -83,9 +106,9 @@ public class ParquetsDialog extends JDialog {
 
 
             Path path = Paths.get(ediFileName.getText());
-            var jtable = (JTable)TableScroll.getViewport().getView();
+            var jtable = (JTable) TableScroll.getViewport().getView();
 
-            serviceDownloadS3Files.displayFile(path,jtable,Integer.parseInt(comboBox2.getSelectedItem().toString()), new StringBuffer());
+            serviceDownloadS3Files.displayFile(path, jtable, Integer.parseInt(comboBox2.getSelectedItem().toString()), new StringBuffer());
 
         });
 
@@ -115,7 +138,7 @@ public class ParquetsDialog extends JDialog {
 
 
         String[] columnNames = {"First Name", "Last Name"};
-        Object[][] data = {{"Kathy", "Smith"},{"John", "Doe"}};
+        Object[][] data = {{"Kathy", "Smith"}, {"John", "Doe"}};
         table1 = new JTable(data, columnNames);
         table1.setFillsViewportHeight(true);
 
@@ -193,8 +216,28 @@ public class ParquetsDialog extends JDialog {
 
         var eleEntity = ENTITIES.stream().filter(entity1 -> entity1.getName().equals(entitySelectString.get())).collect(Collectors.toList()).stream().findFirst().get();
 
-        listingObjectsTest(entitySelectString.get().concat(countrySelectString.get()).concat(levelSelectString.get())
-                , eleEntity.getMsName(), eleEntity.getMsNumber(), arJTextPane.get(), Integer.parseInt(limitSelectString.get()), Integer.parseInt(rowSelectString.get()), logInfo, envSelectString.get(), checkDelete.get(), arJTable.get());
+
+        if (checkExtraction.isSelected()) {
+            executeTriggeer(envSelectString.get().toLowerCase()
+                    , comboEntity.getSelectedItem().toString().toLowerCase()
+                    , comboLevel.getSelectedItem().toString().toLowerCase()
+                    , comboCountry.getSelectedItem().toString().toLowerCase()
+                    , arJTextPane.get()
+                    , checkAllCountries.isSelected());
+        } else {
+
+
+            listingObjectsTest(entitySelectString.get().concat(countrySelectString.get()).concat(levelSelectString.get())
+                    , eleEntity.getMsName()
+                    , eleEntity.getMsNumber()
+                    , arJTextPane.get()
+                    , Integer.parseInt(limitSelectString.get())
+                    , Integer.parseInt(rowSelectString.get())
+                    , logInfo
+                    , envSelectString.get()
+                    , checkDelete.get()
+                    , arJTable.get());
+        }
     }
 
 
@@ -222,6 +265,136 @@ public class ParquetsDialog extends JDialog {
     private static final Regions clientRegion = Regions.EU_CENTRAL_1;
     private static final String PROPERTIES_FILE = "application.properties";
 
+    /**
+     * @param enviroment
+     * @param entityNameExtract
+     * @param levelValue
+     * @param countryValue
+     * @param jTextPane
+     * @param allCountries
+     */
+    public void executeTriggeer(String enviroment, String entityNameExtract, String levelValue, String countryValue, JTextPane jTextPane, boolean allCountries) {
+
+        var prop = new PropertyParser();
+
+        var response = new StringBuffer();
+
+        try {
+            prop.load(ParquetsDialog.class.getClassLoader().getResourceAsStream(PROPERTIES_FILE));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        WebClient webClient = WebClient.create().mutate().build();
+
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("grant_type", "password");
+        formData.add("username", "RAP350891002");
+        formData.add("password", "Dd3VTAM?z#tbvcpf");
+
+        var pathToken = prop.getProperty("ms.path.token.".concat(enviroment));
+        var bsTriggerPath = prop.getProperty("bs.trigger.".concat(enviroment));
+        var basicAuth = prop.getProperty("basicauth.".concat(enviroment));
+
+
+        webClient.post().uri(pathToken).header("Authorization", "Basic ".concat(basicAuth))
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+                .body(BodyInserters.fromFormData(formData)).retrieve().bodyToMono(ResponseToken.class).switchIfEmpty(Mono.error(() -> new Exception("Empty Body to retreive token")))
+                .log().subscribe(responseToken -> {
+
+                    var countryLevel = new CountyLevel();
+
+
+                    var country = Optional.of(COUNTRY).filter(field -> allCountries)
+                            .map(field -> COUNTRY)
+                            .or(() -> Optional.of(COUNTRY).map(strings -> COUNTRY.stream().filter(s -> s.equals(countryValue)).collect(Collectors.toList()))).get();
+
+
+                    var levels = Optional.of(LEVEL).filter(field -> !levelValue.equals("empty"))
+                            .map(field -> LEVEL)
+                            .or(() -> Optional.of(LEVEL).map(strings -> LEVEL.stream().filter(s -> s.equals("no value")).collect(Collectors.toList()))).get();
+
+
+                    var countryLevels = country.stream().flatMap(s -> levels.stream().map(s::concat)).collect(Collectors.toList());
+
+                    Flux.fromIterable(countryLevels).distinctUntilChanged().subscribe(clevel -> {
+
+                        var entity = ENTITIES.stream().filter(entity1 -> entity1.getName().equals(entityNameExtract)).findFirst().orElse(new Entity());
+
+                        var requestTrigger = RequestTrigger.builder()
+                                .version(entity.getVersion())
+                                .sparkEntity(entity.getSparkEntity())
+                                .endpoint(entity.getEndpoint())
+                                .extractor(entity.getExtractor()).build();
+
+                        requestTrigger.setEntity(entityNameExtract.concat(clevel));
+
+                        response.append("_______________________________").append(System.getProperty("line.separator"));
+                        response.append("Entity :: ").append("[ ").append(requestTrigger.getEntity().toUpperCase()).append(" ] :: [ ").append(enviroment.toUpperCase()).append(" ]").append(System.getProperty("line.separator"));
+                        response.append("_______________________________").append(System.getProperty("line.separator"));
+
+                        webClient
+                                .post()
+                                .uri(bsTriggerPath)
+                                .header("Authorization", "Bearer ".concat(responseToken.getAccessToken()))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .bodyValue(requestTrigger)
+                                .retrieve()
+                                .bodyToMono(ResponseBsTrigger.class)
+                                .switchIfEmpty(Mono.error(() -> new Exception("Empty Body to retreive bs trigger")))
+                                .log()
+                                .subscribe(bsTriggerResp -> {
+
+                                    AtomicBoolean continueFlag = new AtomicBoolean(true);
+
+                                    var pathLivy = prop.getProperty("livy.path.".concat(enviroment)).concat(bsTriggerResp.getOutput().getJobId());
+
+                                    webClient.get()
+                                            .uri(pathLivy)
+                                            .retrieve()
+                                            .bodyToMono(String.class)
+                                            .concatWith(Mono.delay(Duration.ofSeconds(10)).then().cast(String.class))
+                                            .log()
+                                            .repeat(continueFlag::get)
+                                            .subscribe(buffer -> {
+
+                                                String jsonString = buffer.toString();
+                                                SessionLivy session = null;
+                                                try {
+                                                    session = objectMapper.readValue(jsonString, SessionLivy.class);
+                                                } catch (JsonProcessingException e) {
+                                                    throw new RuntimeException(e);
+                                                }
+
+                                                switch (session.state) {
+                                                    case "success":
+                                                    case "dead":
+                                                        continueFlag.set(Boolean.FALSE);
+                                                        response.append("[ ").append(new SimpleDateFormat("dd MM yyyy HH:mm:ss").format(new Date())).append(" ] ")
+                                                                .append(requestTrigger.getEntity())
+                                                                .append(" ( jobId = ").append(bsTriggerResp.getOutput().getJobId()).append(" )")
+                                                                .append(" -> [ ").append(session.state.toUpperCase()).append(" ]")
+                                                                .append(System.getProperty("line.separator"));
+                                                        break;
+                                                    default:
+                                                        continueFlag.set(Boolean.TRUE);
+                                                        response.append("[ ").append(new SimpleDateFormat("dd MM yyyy HH:mm:ss").format(new Date())).append(" ] ")
+                                                                .append(requestTrigger.getEntity())
+                                                                .append(" ( jobId = ").append(bsTriggerResp.getOutput().getJobId()).append(" )")
+                                                                .append(" -> [ ").append(session.state.toUpperCase()).append(" ]")
+                                                                .append(System.getProperty("line.separator"));
+                                                }
+
+
+                                                jTextPane.setText(response.toString());
+
+
+                                            });
+
+                                });
+                    });
+                });
+    }
 
     /**
      * @param entityName
@@ -234,7 +407,9 @@ public class ParquetsDialog extends JDialog {
      * @param enviroment
      */
 
-    public void listingObjectsTest(String entityName, String mName, String msNumber, JTextPane jTextPane, int limit, int row, String info, String enviroment, boolean delete, JTable tableData) {
+
+    public void listingObjectsTest(String entityName, String mName, String msNumber, JTextPane jTextPane, int limit,
+                                   int row, String info, String enviroment, boolean delete, JTable tableData) {
 
 
         var prop = new PropertyParser();
@@ -309,28 +484,27 @@ public class ParquetsDialog extends JDialog {
                                 response.append(System.getProperty("line.separator"));
                                 var listSum = s3Client.listObjectsV2((new ListObjectsV2Request()).withPrefix(s3ObjectPrefix).withDelimiter("/").withBucketName(bucketName)).getObjectSummaries();
                                 response.append("number of files parquet => ").append(String.valueOf(listSum.size())).append(System.getProperty("line.separator"));
-                                    listSum.subList(0, !delete ? limit :  listSum.size()).forEach(s3ObjectSummary -> {
+                                listSum.subList(0, !delete ? limit : listSum.size()).forEach(s3ObjectSummary -> {
                                     if (delete) {
-                                            s3Client.deleteObject(new DeleteObjectRequest(s3ObjectSummary.getBucketName(), s3ObjectSummary.getKey()));
-                                            response.append("Parquet delete [ ").append(new SimpleDateFormat("dd-MM-yyy HH:mm:ss").format(s3ObjectSummary.getLastModified())).append(" ] :: ").append(s3ObjectSummary.getKey()).append(" , size :: ")
-                                                    .append(FileUtils.byteCountToDisplaySize(s3ObjectSummary.getSize())).append(System.getProperty("line.separator"));
-                                    }
-                                    else {
-                                            response.append("Parquet [ ").append(new SimpleDateFormat("dd-MM-yyy HH:mm:ss").format(s3ObjectSummary.getLastModified())).append(" ] :: ")
-                                            .append(s3ObjectSummary.getKey()).append(" , size :: ").append(FileUtils.byteCountToDisplaySize(s3ObjectSummary.getSize())).append(System.getProperty("line.separator"));
+                                        s3Client.deleteObject(new DeleteObjectRequest(s3ObjectSummary.getBucketName(), s3ObjectSummary.getKey()));
+                                        response.append("Parquet delete [ ").append(new SimpleDateFormat("dd-MM-yyy HH:mm:ss").format(s3ObjectSummary.getLastModified())).append(" ] :: ").append(s3ObjectSummary.getKey()).append(" , size :: ")
+                                                .append(FileUtils.byteCountToDisplaySize(s3ObjectSummary.getSize())).append(System.getProperty("line.separator"));
+                                    } else {
+                                        response.append("Parquet [ ").append(new SimpleDateFormat("dd-MM-yyy HH:mm:ss").format(s3ObjectSummary.getLastModified())).append(" ] :: ")
+                                                .append(s3ObjectSummary.getKey()).append(" , size :: ").append(FileUtils.byteCountToDisplaySize(s3ObjectSummary.getSize())).append(System.getProperty("line.separator"));
 
-                                            S3Object object = s3Client.getObject(new GetObjectRequest(s3ObjectSummary.getBucketName(), s3ObjectSummary.getKey()));
-                                            InputStream objectData = object.getObjectContent();
-                                            var filename = s3ObjectSummary.getKey().substring(s3ObjectSummary.getKey().lastIndexOf("/") + 1);
+                                        S3Object object = s3Client.getObject(new GetObjectRequest(s3ObjectSummary.getBucketName(), s3ObjectSummary.getKey()));
+                                        InputStream objectData = object.getObjectContent();
+                                        var filename = s3ObjectSummary.getKey().substring(s3ObjectSummary.getKey().lastIndexOf("/") + 1);
 
-                                            if (!filename.equals("_SUCCESS")) {
-                                                try {
-                                                    serviceDownloadS3Files.downloadS3Files(s3Client, s3ObjectSummary, Paths.get("src", "test", "resources", prop.getProperty("s3.prefixField")), filename, row, response, tableData);
-                                                } catch (IOException e) {
-                                                    response.append("Error!  ").append(e.getMessage()).append(System.getProperty("line.separator"));
-                                                }
+                                        if (!filename.equals("_SUCCESS")) {
+                                            try {
+                                                serviceDownloadS3Files.downloadS3Files(s3Client, s3ObjectSummary, Paths.get("src", "test", "resources", prop.getProperty("s3.prefixField")), filename, row, response, tableData);
+                                            } catch (IOException e) {
+                                                response.append("Error!  ").append(e.getMessage()).append(System.getProperty("line.separator"));
                                             }
                                         }
+                                    }
                                 });
                                 response.append("-----------------------------------------------------------------------------------------------------------------------------------------").append(System.getProperty("line.separator"));
 
@@ -350,7 +524,7 @@ public class ParquetsDialog extends JDialog {
                                     response.append("Parquet delete [ ").append(new SimpleDateFormat("dd-MM-yyy HH:mm:ss").format(s3ObjectSummary.getLastModified())).append(" ] :: ").append(s3ObjectSummary.getKey()).append(" , size :: ")
                                             .append(FileUtils.byteCountToDisplaySize(s3ObjectSummary.getSize())).append(System.getProperty("line.separator"));
                                 });
-                            }else{
+                            } else {
 
                                 result.getObjectSummaries().forEach(s3ObjectSummary -> {
                                     response.append("Parquet [ ").append(new SimpleDateFormat("dd-MM-yyy HH:mm:ss").format(s3ObjectSummary.getLastModified())).append(" ] :: ").append(s3ObjectSummary.getKey()).append(" , size :: ")
@@ -389,42 +563,4 @@ public class ParquetsDialog extends JDialog {
 
     }
 
-
-    final static List<Entity> ENTITIES = List.of(Entity.builder().name("bay").msName("mebaynetwbtch").endpoint("mebaynetwbtch.glin-ap31312mp01160-dev-platform-namespace")
-            .msNumber("01160").build(), Entity.builder().name("busbar").msName("mebusbarnetwbtch").endpoint("mebusbarnetwbtch.glin-ap31312mp01161-dev-platform-namespace")
-            .msNumber("01161").build(), Entity.builder().name("connection").msName("meconnectionnetwbtch").endpoint("meconnectionnetwbtch.glin-ap31312mp01176-dev-platform-namespace")
-            .msNumber("01176").build(), Entity.builder().name("manhole").msName("meinframanholebtch").endpoint("meinframanholebtch.glin-ap31312mp02075-dev-platform-namespace")
-            .msNumber("02075").build(), Entity.builder().name("compensator").msName("mecompensnetwbtch").endpoint("mecompensnetwbtch.glin-ap31312mp01163-dev-platform-namespace")
-            .msNumber("01163").build(), Entity.builder().name("equipment").msName("meequipmentnetwbtch").endpoint("meequipmentnetwbtch.glin-ap31312mp01166-dev-platform-namespace")
-            .msNumber("01166").build(), Entity.builder().name("grounding").msName("megroundingnetwbtch").endpoint("megroundingnetwbtch.glin-ap31312mp001167-dev-platform-namespace")
-            .msNumber("01167").build(), Entity.builder().name("line").msName("melinenetwbtch ").endpoint("melinenetwbtch.glin-ap31312mp01168-dev-platform-namespace")
-            .msNumber("01168").build(), Entity.builder().name("node").msName("menodenetwbtch").endpoint("menodenetwbtch.glin-ap31312mp01164-dev-platform-namespace")
-            .msNumber("01164").build(), Entity.builder().name("esegment").msName("mesegmentnetwbtch").endpoint("mesegmentnetwbtch.glin-ap31312mp01169-dev-platform-namespace")
-            .msNumber("01169").build(), Entity.builder().name("station").msName("mestationnetwbtch").endpoint("mestationnetwbtch.glin-ap31312mp01170-dev-platform-namespace")
-            .msNumber("01170").build(), Entity.builder().name("switch").msName("meswitchnetwbtch").endpoint("meswitchnetwbtch.glin-ap31312mp01171-dev-platform-namespace")
-            .msNumber("01171").build(), Entity.builder().name("system").msName("mesystemnetwbtch").endpoint("mesystemnetwbtch.glin-ap31312mp01162-dev-platform-namespace")
-            .msNumber("01162").build(), Entity.builder().name("terminal").msName("meterminalnetwbtch").endpoint("meterminalnetwbtch.glin-ap31312mp01172-dev-platform-namespace")
-            .msNumber("01172").build(), Entity.builder().name("transformer").msName("metransfnetwbtch").endpoint("metransfnetwbtch.glin-ap31312mp01173-dev-platform-namespace")
-            .msNumber("01173").build(), Entity.builder().name("fastening").msName("meinfrafasteningbtch").endpoint("meinfrafasteningbtch.glin-ap31312mp02083-dev-platform-namespace")
-            .msNumber("02083").build(), Entity.builder().name("winding").msName("mewindingnetwbtch").endpoint("mewindingnetwbtch.glin-ap31312mp01174-dev-platform-namespace")
-            .msNumber("01174").build(),Entity.builder().name("support").msName("meinfrasupportbtch").endpoint("meinfrasupportbtch.glin-ap31312mp02080-dev-platform-namespace")
-            .msNumber("02080").build(),Entity.builder().name("other").msName("meinfraotherbtch").endpoint("meinfraotherbtch.glin-ap31312mp02082-dev-platform-namespace")
-            .msNumber("02082").build(),Entity.builder().name("manhole").msName("meinframanholebtch").endpoint("meinframanholebtch.glin-ap31312mp02075-dev-platform-namespace")
-            .msNumber("02075").build(),Entity.builder().name("extractline").msName("menetworkextrbatch").endpoint("menetworkextrbatch.glin-ap31312mp02018-dev-platform-namespace")
-            .msNumber("02018").build(),Entity.builder().name("windinghst").msName("mewindinghstnetwbtch").endpoint("mewindinghstnetwbtch.glin-ap31312mp02580-dev-platform-namespace")
-            .msNumber("02580").build(),Entity.builder().name("stationhst").msName("mestationhstnetwbtch").endpoint("mestationhstnetwbtch.glin-ap31312mp02555-dev-platform-namespace")
-            .msNumber("02555").build(),Entity.builder().name("linehst").msName("melinehstnetwbtch").endpoint("melinehstnetwbtch.glin-ap31312mp02557-dev-platform-namespace")
-            .msNumber("02557").build(),Entity.builder().name("connectionhst").msName("meconnecthstnetwbtch").endpoint("meconnecthstnetwbtch.glin-ap31312mp02581-dev-platform-namespace")
-            .msNumber("02581").build(),Entity.builder().name("transformerhst").msName("metransfhstnetwbtch").endpoint("metransfhstnetwbtch.glin-ap31312mp02558-dev-platform-namespace")
-            .msNumber("02558").build(),Entity.builder().name("switchhst").msName("meswitchhstnetwbtch").endpoint("meswitchhstnetwbtch.glin-ap31312mp02577-dev-platform-namespace")
-            .msNumber("02577").build(),Entity.builder().name("groundinghst").msName("megroundhstnetwbtch").endpoint("megroundhstnetwbtch.glin-ap31312mp02559-dev-platform-namespace")
-            .msNumber("02559").build(),Entity.builder().name("segmenthst").msName("mesegmenthstnetwbtch").endpoint("mesegmenthstnetwbtch.glin-ap31312mp02554-dev-platform-namespace")
-            .msNumber("02554").build(),Entity.builder().name("busbarhst").msName("mebusbarhstnetwbtch").endpoint("mebusbarhstnetwbtch.glin-ap31312mp02576-dev-platform-namespace")
-            .msNumber("02576").build());
-
-    final static List<String> ENTITY = List.of("bay", "busbar", "compensator", "equipment", "grounding", "line", "node", "esegment", "station", "switch", "system", "terminal", "transformer", "winding","fastening");
-
-    final static List<String> LEVEL = List.of("m", "l", "h");
-
-    final static List<String> COUNTRY = List.of("italy", "espana", "colombia", "chile", "peru", "romania", "saopaulo", "goias", "ceras", "rio");
 }

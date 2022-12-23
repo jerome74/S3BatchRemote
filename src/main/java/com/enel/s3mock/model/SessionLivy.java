@@ -18,7 +18,7 @@ import java.util.List;
 @Builder
 public class SessionLivy {
 
-    @JsonProperty("output")
+    @JsonProperty("id")
     public int id;
 
     @JsonProperty("name")
